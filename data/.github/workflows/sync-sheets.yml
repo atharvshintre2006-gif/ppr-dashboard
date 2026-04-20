@@ -1,0 +1,72 @@
+name: Sync Google Sheets → CSV
+ 
+on:
+  schedule:
+    # Runs every hour at :00 — adjust as needed
+    - cron: '0 * * * *'
+  workflow_dispatch:  # allows manual trigger from GitHub UI with one click
+ 
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed to commit CSV files back to repo
+ 
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+ 
+      - name: Download CSV files from Google Sheets
+        run: |
+          mkdir -p data
+ 
+          echo "Downloading headcount..."
+          curl -sL "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBhNOUlY7RtZoaffswg_Hz3_VVTnwvcgjucaiwLyko6fssHXgQ74HSZTd3ccjxWw/pub?gid=831386445&single=true&output=csv" \
+            -o data/headcount.csv || echo "headcount download failed"
+ 
+          echo "Downloading attrition..."
+          curl -sL "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBhNOUlY7RtZoaffswg_Hz3_VVTnwvcgjucaiwLyko6fssHXgQ74HSZTd3ccjxWw/pub?gid=834505659&single=true&output=csv" \
+            -o data/attrition.csv || echo "attrition download failed"
+ 
+          echo "Downloading absenteeism..."
+          curl -sL "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBhNOUlY7RtZoaffswg_Hz3_VVTnwvcgjucaiwLyko6fssHXgQ74HSZTd3ccjxWw/pub?gid=1287839173&single=true&output=csv" \
+            -o data/absenteeism.csv || echo "absenteeism download failed"
+ 
+          echo "Downloading joiners..."
+          curl -sL "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBhNOUlY7RtZoaffswg_Hz3_VVTnwvcgjucaiwLyko6fssHXgQ74HSZTd3ccjxWw/pub?gid=1109035658&single=true&output=csv" \
+            -o data/joiners.csv || echo "joiners download failed"
+ 
+          echo "Downloading diversity..."
+          curl -sL "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBhNOUlY7RtZoaffswg_Hz3_VVTnwvcgjucaiwLyko6fssHXgQ74HSZTd3ccjxWw/pub?gid=19209020&single=true&output=csv" \
+            -o data/diversity.csv || echo "diversity download failed"
+ 
+          echo "Downloading exits..."
+          curl -sL "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBhNOUlY7RtZoaffswg_Hz3_VVTnwvcgjucaiwLyko6fssHXgQ74HSZTd3ccjxWw/pub?gid=1328804319&single=true&output=csv" \
+            -o data/exits.csv || echo "exits download failed"
+ 
+          echo "Downloading flexi..."
+          curl -sL "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBhNOUlY7RtZoaffswg_Hz3_VVTnwvcgjucaiwLyko6fssHXgQ74HSZTd3ccjxWw/pub?gid=1734781677&single=true&output=csv" \
+            -o data/flexi.csv || echo "flexi download failed"
+ 
+          echo "Downloading tenure..."
+          curl -sL "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBhNOUlY7RtZoaffswg_Hz3_VVTnwvcgjucaiwLyko6fssHXgQ74HSZTd3ccjxWw/pub?gid=1370360543&single=true&output=csv" \
+            -o data/tenure.csv || echo "tenure download failed"
+ 
+          echo "All downloads complete. File sizes:"
+          ls -lh data/
+ 
+      - name: Commit and push updated CSVs
+        run: |
+          git config user.name  "PPR Auto-Sync Bot"
+          git config user.email "ppr-bot@users.noreply.github.com"
+ 
+          git add data/*.csv
+ 
+          # Only commit if something actually changed
+          if git diff --cached --quiet; then
+            echo "No changes detected in CSV files. Skipping commit."
+          else
+            git commit -m "🔄 Auto-sync: Update CSV data $(date -u '+%Y-%m-%d %H:%M UTC')"
+            git push
+            echo "CSV files updated and pushed successfully."
+          fi
