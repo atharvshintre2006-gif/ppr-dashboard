@@ -1,0 +1,2391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>India TB Manufacturing — People Analytics</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #080c14;
+  --surface: #0d1421;
+  --surface2: #111b2e;
+  --border: rgba(255,255,255,0.07);
+  --accent: #00d4ff;
+  --accent2: #ff6b35;
+  --accent3: #a259ff;
+  --accent4: #00ff9d;
+  --text: #e8f0fe;
+  --text2: #7b8ea8;
+  --text3: #4a5568;
+  --red: #ff4d6d;
+  --amber: #ffb830;
+  --green: #00e676;
+  --font: 'Syne', sans-serif;
+  --mono: 'DM Mono', monospace;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Background grid */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* SIDEBAR */
+.sidebar {
+  position: fixed;
+  left: 0; top: 0; bottom: 0;
+  width: 220px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.logo-area {
+  padding: 24px 20px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.logo-badge {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--accent);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.logo-title {
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.3;
+  color: var(--text);
+}
+
+.logo-sub {
+  font-size: 11px;
+  color: var(--text2);
+  margin-top: 3px;
+  font-family: var(--mono);
+}
+
+.nav {
+  padding: 16px 0;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.nav-section-label {
+  font-size: 9px;
+  font-family: var(--mono);
+  color: var(--text3);
+  letter-spacing: 2px;
+  padding: 12px 20px 6px;
+  text-transform: uppercase;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-left: 2px solid transparent;
+  font-size: 13px;
+  color: var(--text2);
+  font-weight: 600;
+  position: relative;
+}
+
+.nav-item:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+
+.nav-item.active {
+  color: var(--accent);
+  border-left-color: var(--accent);
+  background: rgba(0,212,255,0.05);
+}
+
+.nav-icon { width: 16px; text-align: center; font-size: 14px; }
+
+.data-badge {
+  margin-left: auto;
+  font-size: 9px;
+  font-family: var(--mono);
+  background: rgba(0,212,255,0.1);
+  color: var(--accent);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.sidebar-footer {
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  font-size: 10px;
+  color: var(--text3);
+  font-family: var(--mono);
+}
+
+/* CSV RELOAD SECTION */
+.reload-area {
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+}
+
+.reload-btn {
+  width: 100%;
+  padding: 8px 12px;
+  background: rgba(0,212,255,0.1);
+  border: 1px solid rgba(0,212,255,0.2);
+  border-radius: 6px;
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+}
+
+.reload-btn:hover { background: rgba(0,212,255,0.2); }
+
+/* MAIN CONTENT */
+.main {
+  margin-left: 220px;
+  min-height: 100vh;
+  position: relative;
+  z-index: 1;
+}
+
+/* TOP BAR */
+.topbar {
+  position: sticky;
+  top: 0;
+  background: rgba(8,12,20,0.95);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 32px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  z-index: 50;
+}
+
+.page-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text);
+  flex: 1;
+}
+
+.filter-group {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.filter-label {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+select, .filter-select {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+select:focus { border-color: var(--accent); }
+
+/* PAGES */
+.page { display: none; padding: 28px 32px; }
+.page.active { display: block; }
+
+/* KPI GRID */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+  margin-bottom: 28px;
+}
+
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s, border-color 0.2s;
+}
+
+.kpi-card:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.15); }
+
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--kpi-color, var(--accent));
+}
+
+.kpi-label {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 8px;
+}
+
+.kpi-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--kpi-color, var(--accent));
+  line-height: 1;
+  font-family: var(--mono);
+}
+
+.kpi-sub {
+  font-size: 11px;
+  color: var(--text2);
+  margin-top: 5px;
+  font-family: var(--mono);
+}
+
+.kpi-trend {
+  font-size: 11px;
+  font-family: var(--mono);
+  margin-top: 4px;
+}
+
+.kpi-trend.up { color: var(--green); }
+.kpi-trend.down { color: var(--red); }
+
+/* CHART CONTAINERS */
+.charts-row {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.charts-row-2 { grid-template-columns: 1fr 1fr; }
+.charts-row-3 { grid-template-columns: 1fr 1fr 1fr; }
+.charts-row-wide { grid-template-columns: 2fr 1fr; }
+.charts-row-1 { grid-template-columns: 1fr; }
+
+.chart-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  position: relative;
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.chart-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.chart-sub {
+  font-size: 10px;
+  color: var(--text2);
+  font-family: var(--mono);
+  margin-top: 2px;
+}
+
+.chart-tag {
+  font-size: 9px;
+  font-family: var(--mono);
+  padding: 3px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.tag-blue { background: rgba(0,212,255,0.1); color: var(--accent); }
+.tag-orange { background: rgba(255,107,53,0.1); color: var(--accent2); }
+.tag-purple { background: rgba(162,89,255,0.1); color: var(--accent3); }
+.tag-green { background: rgba(0,255,157,0.1); color: var(--accent4); }
+
+canvas { max-width: 100%; }
+
+/* HEATMAP */
+.heatmap-container {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.heatmap-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.heatmap-table th {
+  color: var(--text2);
+  padding: 5px 8px;
+  text-align: center;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.heatmap-table td {
+  padding: 6px 8px;
+  text-align: center;
+  border-radius: 4px;
+  font-weight: 500;
+  min-width: 45px;
+  transition: transform 0.15s;
+  cursor: default;
+}
+
+.heatmap-table td:hover { transform: scale(1.1); z-index: 2; position: relative; }
+
+.hm-label {
+  text-align: left !important;
+  color: var(--text2);
+  font-size: 10px;
+  padding-right: 12px;
+  white-space: nowrap;
+}
+
+/* SANKEY */
+#sankey-svg { width: 100%; }
+
+/* GAUGES */
+.gauge-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.gauge-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+}
+
+.gauge-canvas { max-width: 160px; margin: 0 auto; display: block; }
+
+/* SECTION HEADER */
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-number {
+  width: 32px; height: 32px;
+  background: rgba(0,212,255,0.1);
+  border: 1px solid rgba(0,212,255,0.2);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--accent);
+  font-family: var(--mono);
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.section-meta {
+  font-size: 11px;
+  color: var(--text2);
+  font-family: var(--mono);
+}
+
+/* DIVERSITY SPECIAL */
+.diversity-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.div-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+}
+
+.div-circle {
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  margin: 0 auto 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 800;
+  font-family: var(--mono);
+}
+
+/* BUBBLE WRAPPER */
+#bubble-chart { width: 100%; height: 320px; }
+
+/* TREEMAP */
+#treemap-svg { width: 100%; }
+
+/* TOOLTIP */
+.tooltip {
+  position: fixed;
+  background: rgba(13,20,33,0.95);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-family: var(--mono);
+  color: var(--text);
+  pointer-events: none;
+  z-index: 999;
+  display: none;
+  backdrop-filter: blur(10px);
+}
+
+/* TABS */
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  background: var(--surface2);
+  border-radius: 8px;
+  padding: 4px;
+  width: fit-content;
+}
+
+.tab-btn {
+  padding: 7px 16px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text2);
+  font-family: var(--mono);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tab-btn.active {
+  background: var(--surface);
+  color: var(--accent);
+  border: 1px solid rgba(0,212,255,0.2);
+}
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--text3); border-radius: 2px; }
+
+/* PULSE DOT */
+.pulse-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent4);
+  display: inline-block;
+  margin-right: 6px;
+  box-shadow: 0 0 0 0 rgba(0,255,157,0.4);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(0,255,157,0.4); }
+  70% { box-shadow: 0 0 0 8px rgba(0,255,157,0); }
+  100% { box-shadow: 0 0 0 0 rgba(0,255,157,0); }
+}
+
+/* COUNTER ANIMATION */
+.counter { transition: all 0.4s; }
+
+/* CSV URL MODAL */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay.open { display: flex; }
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px;
+  width: 600px;
+  max-width: 90vw;
+}
+
+.modal h2 { font-size: 18px; margin-bottom: 8px; }
+.modal p { font-size: 12px; color: var(--text2); font-family: var(--mono); margin-bottom: 20px; }
+
+.url-row { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.url-row label { font-size: 11px; color: var(--text2); font-family: var(--mono); }
+.url-row input {
+  width: 100%; padding: 8px 12px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--text); font-family: var(--mono); font-size: 11px;
+  outline: none;
+}
+.url-row input:focus { border-color: var(--accent); }
+
+.modal-btns { display: flex; gap: 10px; margin-top: 20px; }
+.btn-primary {
+  flex: 1; padding: 10px;
+  background: var(--accent); color: var(--bg);
+  border: none; border-radius: 8px;
+  font-family: var(--font); font-size: 13px; font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-secondary {
+  padding: 10px 20px;
+  background: transparent; color: var(--text2);
+  border: 1px solid var(--border); border-radius: 8px;
+  font-family: var(--mono); font-size: 12px;
+  cursor: pointer;
+}
+
+/* RESPONSIVE ADJUSTMENTS */
+@media (max-width: 1200px) {
+  .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+  .charts-row-wide { grid-template-columns: 1fr; }
+}
+
+.fade-in {
+  animation: fadeIn 0.4s ease forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* RADAR LEGEND */
+.radar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  justify-content: center;
+}
+
+.radar-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--text2);
+}
+
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+/* ABSENTEEISM FLAGS */
+.abs-high { background: rgba(255,77,109,0.25) !important; color: #ff8fa3 !important; }
+.abs-mid { background: rgba(255,184,48,0.2) !important; color: #ffd166 !important; }
+.abs-low { background: rgba(0,230,118,0.15) !important; color: #69f0ae !important; }
+.abs-na { background: rgba(255,255,255,0.03) !important; color: var(--text3) !important; }
+
+/* FLEXI BADGE */
+.workforce-split {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.ws-card {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ws-icon { font-size: 24px; }
+.ws-label { font-size: 11px; color: var(--text2); font-family: var(--mono); }
+.ws-value { font-size: 22px; font-weight: 800; font-family: var(--mono); }
+
+</style>
+</head>
+<body>
+
+<div class="tooltip" id="tooltip"></div>
+
+<!-- CSV URL Modal -->
+<div class="modal-overlay" id="csvModal">
+  <div class="modal">
+    <h2>📂 Update Data Sources</h2>
+    <p>Paste your Google Sheets CSV export URLs below. The dashboard will fetch and reload with fresh data.</p>
+    <div id="url-fields"></div>
+    <div class="modal-btns">
+      <button class="btn-primary" onclick="reloadFromURLs()">⟳ Load & Refresh Dashboard</button>
+      <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="logo-area">
+    <div class="logo-badge">People Analytics</div>
+    <div class="logo-title">India TB<br>Manufacturing</div>
+    <div class="logo-sub">2015 — 2026</div>
+  </div>
+
+  <div class="nav">
+    <div class="nav-section-label">Overview</div>
+    <div class="nav-item active" onclick="showPage('overview', this)">
+      <span class="nav-icon">⬡</span> Dashboard
+    </div>
+
+    <div class="nav-section-label">Workforce</div>
+    <div class="nav-item" onclick="showPage('headcount', this)">
+      <span class="nav-icon">◈</span> Headcount
+      <span class="data-badge">2015–26</span>
+    </div>
+    <div class="nav-item" onclick="showPage('attrition', this)">
+      <span class="nav-icon">◩</span> Attrition
+      <span class="data-badge">2015–26</span>
+    </div>
+    <div class="nav-item" onclick="showPage('joiners', this)">
+      <span class="nav-icon">◎</span> New Joiners
+    </div>
+    <div class="nav-item" onclick="showPage('exits', this)">
+      <span class="nav-icon">◷</span> Exits
+    </div>
+
+    <div class="nav-section-label">Analytics</div>
+    <div class="nav-item" onclick="showPage('diversity', this)">
+      <span class="nav-icon">◐</span> Diversity
+    </div>
+    <div class="nav-item" onclick="showPage('absenteeism', this)">
+      <span class="nav-icon">▣</span> Absenteeism
+    </div>
+    <div class="nav-item" onclick="showPage('flexi', this)">
+      <span class="nav-icon">◑</span> Flexi vs Perm
+    </div>
+    <div class="nav-item" onclick="showPage('tenure', this)">
+      <span class="nav-icon">◬</span> Tenure & Exit
+    </div>
+  </div>
+
+  <div class="reload-area">
+    <button class="reload-btn" onclick="openModal()">
+      ⟳ Update CSV Sources
+    </button>
+  </div>
+
+  <div class="sidebar-footer">
+    <span class="pulse-dot"></span>Live from CSV
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="page-title" id="pageTitle">Overview Dashboard</div>
+    <div class="filter-group">
+      <span class="filter-label">Year</span>
+      <select id="yearFilter" onchange="applyFilters()">
+        <option value="all">All Years</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Category</span>
+      <select id="catFilter" onchange="applyFilters()">
+        <option value="all">All Categories</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Type</span>
+      <select id="typeFilter" onchange="applyFilters()">
+        <option value="all">All</option>
+        <option value="permanent">Permanent</option>
+        <option value="flexi">Flexi</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- ======================== OVERVIEW PAGE ======================== -->
+  <div class="page active fade-in" id="page-overview">
+    <div class="kpi-grid">
+      <div class="kpi-card" style="--kpi-color: var(--accent)">
+        <div class="kpi-label">Total Headcount</div>
+        <div class="kpi-value counter" id="kpi-headcount">2,814</div>
+        <div class="kpi-sub">As of Dec 2025</div>
+        <div class="kpi-trend up">↑ +4.2% vs 2024</div>
+      </div>
+      <div class="kpi-card" style="--kpi-color: var(--red)">
+        <div class="kpi-label">Attrition Rate</div>
+        <div class="kpi-value counter" id="kpi-attrition">8.3%</div>
+        <div class="kpi-sub">FY 2025</div>
+        <div class="kpi-trend up">↑ +0.8pp vs 2024</div>
+      </div>
+      <div class="kpi-card" style="--kpi-color: var(--accent3)">
+        <div class="kpi-label">Gender Diversity</div>
+        <div class="kpi-value counter" id="kpi-diversity">18.4%</div>
+        <div class="kpi-sub">Female ratio 2025</div>
+        <div class="kpi-trend up">↑ +1.2pp YoY</div>
+      </div>
+      <div class="kpi-card" style="--kpi-color: var(--amber)">
+        <div class="kpi-label">Absenteeism</div>
+        <div class="kpi-value counter" id="kpi-absent">14.2%</div>
+        <div class="kpi-sub">Avg 2025</div>
+        <div class="kpi-trend down">↓ -1.1pp vs 2024</div>
+      </div>
+      <div class="kpi-card" style="--kpi-color: var(--accent4)">
+        <div class="kpi-label">New Joiners</div>
+        <div class="kpi-value counter" id="kpi-joiners">423</div>
+        <div class="kpi-sub">FY 2025</div>
+        <div class="kpi-trend up">↑ +38 vs 2024</div>
+      </div>
+    </div>
+
+    <div class="charts-row charts-row-wide">
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Headcount Trajectory (2015–2026)</div>
+            <div class="chart-sub">Total workforce across all categories</div>
+          </div>
+          <span class="chart-tag tag-blue">TREND</span>
+        </div>
+        <canvas id="chart-hc-trend" height="180"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Attrition vs Joiners</div>
+            <div class="chart-sub">Annual comparison</div>
+          </div>
+          <span class="chart-tag tag-orange">FLOW</span>
+        </div>
+        <canvas id="chart-att-vs-join" height="180"></canvas>
+      </div>
+    </div>
+
+    <div class="charts-row charts-row-3">
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Workforce Composition</div>
+            <div class="chart-sub">Category mix 2025</div>
+          </div>
+          <span class="chart-tag tag-purple">BREAKDOWN</span>
+        </div>
+        <canvas id="chart-composition" height="220"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Attrition Rate Trend</div>
+            <div class="chart-sub">2015–2025 annual %</div>
+          </div>
+          <span class="chart-tag tag-orange">ATTRITION</span>
+        </div>
+        <canvas id="chart-attrition-trend" height="220"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Diversity Radar</div>
+            <div class="chart-sub">Multi-dimension view</div>
+          </div>
+          <span class="chart-tag tag-green">DIVERSITY</span>
+        </div>
+        <canvas id="chart-diversity-radar" height="220"></canvas>
+      </div>
+    </div>
+
+    <!-- Sankey -->
+    <div class="chart-card" style="margin-bottom: 20px">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">Employee Movement Sankey — 2025</div>
+          <div class="chart-sub">Inflow · Retained · Exits by reason</div>
+        </div>
+        <span class="chart-tag tag-blue">SANKEY</span>
+      </div>
+      <svg id="sankey-svg" height="220"></svg>
+    </div>
+  </div>
+
+  <!-- ======================== HEADCOUNT PAGE ======================== -->
+  <div class="page fade-in" id="page-headcount">
+    <div class="section-header">
+      <div class="section-number">01</div>
+      <div>
+        <div class="section-title">Headcount Analytics</div>
+        <div class="section-meta">Annual workforce data 2015–2026 · All categories</div>
+      </div>
+    </div>
+
+    <div class="kpi-grid" style="grid-template-columns: repeat(4,1fr)">
+      <div class="kpi-card" style="--kpi-color:var(--accent)">
+        <div class="kpi-label">Peak Headcount</div>
+        <div class="kpi-value">3,241</div>
+        <div class="kpi-sub">Year: 2022</div>
+      </div>
+      <div class="kpi-card" style="--kpi-color:var(--accent2)">
+        <div class="kpi-label">Permanent Staff</div>
+        <div class="kpi-value">1,847</div>
+        <div class="kpi-sub">Dec 2025</div>
+      </div>
+      <div class="kpi-card" style="--kpi-color:var(--accent3)">
+        <div class="kpi-label">Flexi / Contract</div>
+        <div class="kpi-value">967</div>
+        <div class="kpi-sub">Dec 2025</div>
+      </div>
+      <div class="kpi-card" style="--kpi-color:var(--accent4)">
+        <div class="kpi-label">CAGR (10yr)</div>
+        <div class="kpi-value">4.1%</div>
+        <div class="kpi-sub">2015–2025</div>
+      </div>
+    </div>
+
+    <div class="charts-row charts-row-2">
+      <div class="chart-card">
+        <div class="chart-header">
+          <div><div class="chart-title">Category-wise Headcount Over Years</div><div class="chart-sub">Stacked area — all categories</div></div>
+          <span class="chart-tag tag-blue">STACKED</span>
+        </div>
+        <canvas id="chart-hc-stacked" height="280"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <div><div class="chart-title">Headcount by Category — Bubble</div><div class="chart-sub">Size = headcount · X = year · Y = category rank</div></div>
+          <span class="chart-tag tag-orange">BUBBLE</span>
+        </div>
+        <canvas id="chart-hc-bubble" height="280"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <div><div class="chart-title">Department Treemap — 2025</div><div class="chart-sub">Area proportional to headcount</div></div>
+        <span class="chart-tag tag-purple">TREEMAP</span>
+      </div>
+      <svg id="treemap-svg" height="240"></svg>
+    </div>
+  </div>
+
+  <!-- ======================== ATTRITION PAGE ======================== -->
+  <div class="page fade-in" id="page-attrition">
+    <div class="section-header">
+      <div class="section-number">02</div>
+      <div>
+        <div class="section-title">Attrition Analysis</div>
+        <div class="section-meta">2015–2025 · Voluntary, Involuntary, Absconding</div>
+      </div>
+    </div>
+
+    <div class="gauge-grid">
+      <div class="gauge-card">
+        <div class="chart-title" style="margin-bottom:12px">Overall Rate</div>
+        <canvas class="gauge-canvas" id="gauge-overall" width="160" height="100"></canvas>
+        <div style="font-size:22px;font-weight:800;font-family:var(--mono);color:var(--accent2);margin-top:8px">8.3%</div>
+        <div style="font-size:11px;color:var(--text2);font-family:var(--mono)">FY 2025</div>
+      </div>
+      <div class="gauge-card">
+        <div class="chart-title" style="margin-bottom:12px">Voluntary Rate</div>
+        <canvas class="gauge-canvas" id="gauge-vol" width="160" height="100"></canvas>
+        <div style="font-size:22px;font-weight:800;font-family:var(--mono);color:var(--red);margin-top:8px">5.1%</div>
+        <div style="font-size:11px;color:var(--text2);font-family:var(--mono)">FY 2025</div>
+      </div>
+      <div class="gauge-card">
+        <div class="chart-title" style="margin-bottom:12px">Absconding</div>
+        <canvas class="gauge-canvas" id="gauge-abs" width="160" height="100"></canvas>
+        <div style="font-size:22px;font-weight:800;font-family:var(--mono);color:var(--amber);margin-top:8px">2.4%</div>
+        <div style="font-size:11px;color:var(--text2);font-family:var(--mono)">FY 2025</div>
+      </div>
+    </div>
+
+    <div class="charts-row charts-row-2">
+      <div class="chart-card">
+        <div class="chart-header">
+          <div><div class="chart-title">Attrition Trend 2015–2025</div><div class="chart-sub">Annual rate with YoY delta</div></div>
+          <span class="chart-tag tag-orange">TREND</span>
+        </div>
+        <canvas id="chart-attrition-full" height="260"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <div><div class="chart-title">Attrition by Category</div><div class="chart-sub">Latest year breakdown</div></div>
+          <span class="chart-tag tag-orange">CATEGORY</span>
+        </div>
+        <canvas id="chart-attrition-cat" height="260"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <div><div class="chart-title">Attrition Heatmap — Category × Year</div><div class="chart-sub">Color intensity = attrition rate | Red ≥12% | Amber 8–12%</div></div>
+        <span class="chart-tag tag-orange">HEATMAP</span>
+      </div>
+      <div class="heatmap-container" id="attrition-heatmap"></div>
+    </div>
+  </div>
+
+  <!-- ======================== JOINERS PAGE ======================== -->
+  <div class="page fade-in" id="page-joiners">
+    <div class="section-header">
+      <div class="section-number">03</div>
+      <div>
+        <div class="section-title">New Joiners</div>
+        <div class="section-meta">Annual intake data · Category-wise</div>
+      </div>
+    </div>
+
+    <div class="charts-row charts-row-2">
+      <div class="chart-card">
+        <div class="chart-header">
+          <div><div class="chart-title">Annual New Joiners Trend</div></div>
+          <span class="chart-tag tag-green">INTAKE</span>
+        </div>
+        <canvas id="chart-joiners-trend" height="280"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <div><div class="chart-title">Joiners by Category (2025)</div></div>
+          <span class="chart-tag tag-green">BREAKDOWN</span>
+        </div>
+        <canvas id="chart-joiners-cat" height="280"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <div><div class="chart-title">Joiner vs Attrition Balance</div><div class="chart-sub">Net workforce change each year</div></div>
+        <span class="chart-tag tag-blue">NET FLOW</span>
+      </div>
+      <canvas id="chart-net-flow" height="200"></canvas>
+    </div>
+  </div>
+
+  <!-- ======================== EXITS PAGE ======================== -->
+  <div class="page fade-in" id="page-exits">
+    <div class="section-header">
+      <div class="section-number">04</div>
+      <div>
+        <div class="section-title">Exits & Separations</div>
+        <div class="section-meta">Voluntary · Involuntary · Retirement · Absconding</div>
+      </div>
+    </div>
+
+    <div class="charts-row charts-row-2">
+      <div class="chart-card">
+        <div class="chart-header">
+          <div><div class="chart-title">Exit Reasons — Annual</div></div>
+          <span class="chart-tag tag-orange">EXITS</span>
+        </div>
+        <canvas id="chart-exits-stacked" height="280"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <div><div class="chart-title">Exit Mix 2025</div></div>
+          <span class="chart-tag tag-orange">DONUT</span>
+        </div>
+        <canvas id="chart-exits-donut" height="280"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <div><div class="chart-title">Exits Heatmap — Month × Year</div><div class="chart-sub">Seasonal exit patterns</div></div>
+        <span class="chart-tag tag-orange">HEATMAP</span>
+      </div>
+      <div id="exits-heatmap"></div>
+    </div>
+  </div>
+
+  <!-- ======================== DIVERSITY PAGE ======================== -->
+  <div class="page fade-in" id="page-diversity">
+    <div class="section-header">
+      <div class="section-number">05</div>
+      <div>
+        <div class="section-title">Diversity Dashboard</div>
+        <div class="section-meta">Gender composition · 2015–2025</div>
+      </div>
+    </div>
+
+    <div class="diversity-grid">
+      <div class="div-card">
+        <div class="div-circle" style="background:rgba(0,212,255,0.1);color:var(--accent)">♂</div>
+        <div style="font-size:28px;font-weight:800;font-family:var(--mono);color:var(--accent)">81.6%</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:4px">Male</div>
+        <div style="font-size:11px;color:var(--text2);font-family:var(--mono);margin-top:2px">2,297 employees</div>
+      </div>
+      <div class="div-card">
+        <div class="div-circle" style="background:rgba(162,89,255,0.1);color:var(--accent3)">♀</div>
+        <div style="font-size:28px;font-weight:800;font-family:var(--mono);color:var(--accent3)">18.4%</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:4px">Female</div>
+        <div style="font-size:11px;color:var(--text2);font-family:var(--mono);margin-top:2px">517 employees</div>
+      </div>
+      <div class="div-card">
+        <div class="div-circle" style="background:rgba(0,255,157,0.1);color:var(--accent4)">↑</div>
+        <div style="font-size:28px;font-weight:800;font-family:var(--mono);color:var(--accent4)">+1.2pp</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:4px">YoY Change</div>
+        <div style="font-size:11px;color:var(--text2);font-family:var(--mono);margin-top:2px">Female ratio growth</div>
+      </div>
+      <div class="div-card">
+        <div class="div-circle" style="background:rgba(255,184,48,0.1);color:var(--amber)">🎯</div>
+        <div style="font-size:28px;font-weight:800;font-family:var(--mono);color:var(--amber)">25%</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:4px">Target 2027</div>
+        <div style="font-size:11px;color:var(--text2);font-family:var(--mono);margin-top:2px">Gap: 6.6pp</div>
+      </div>
+    </div>
+
+    <div class="charts-row charts-row-2">
+      <div class="chart-card">
+        <div class="chart-header">
+          <div><div class="chart-title">Gender Ratio Trend 2015–2025</div></div>
+          <span class="chart-tag tag-purple">TREND</span>
+        </div>
+        <canvas id="chart-diversity-trend" height="260"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <div><div class="chart-title">Female Representation by Category</div><div class="chart-sub">Latest year</div></div>
+          <span class="chart-tag tag-purple">CATEGORY</span>
+        </div>
+        <canvas id="chart-diversity-cat" height="260"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================== ABSENTEEISM PAGE ======================== -->
+  <div class="page fade-in" id="page-absenteeism">
+    <div class="section-header">
+      <div class="section-number">06</div>
+      <div>
+        <div class="section-title">Absenteeism Tracker</div>
+        <div class="section-meta">2018–2026 · Auth / Unauth / SPL / Total</div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchAbsTab('heatmap', this)">Heatmap</button>
+      <button class="tab-btn" onclick="switchAbsTab('trend', this)">Trend</button>
+      <button class="tab-btn" onclick="switchAbsTab('monthly', this)">Monthly</button>
+    </div>
+
+    <div id="abs-tab-heatmap">
+      <div class="chart-card">
+        <div class="chart-header">
+          <div><div class="chart-title">Absenteeism Heatmap — Month × Year</div><div class="chart-sub">Red ≥17% · Amber 15–17% · Green &lt;15%</div></div>
+          <span class="chart-tag tag-orange">TOTAL %</span>
+        </div>
+        <div class="heatmap-container" id="abs-heatmap"></div>
+      </div>
+    </div>
+
+    <div id="abs-tab-trend" style="display:none">
+      <div class="chart-card">
+        <div class="chart-header">
+          <div><div class="chart-title">Annual Absenteeism Trend</div></div>
+          <span class="chart-tag tag-orange">YEARLY</span>
+        </div>
+        <canvas id="chart-abs-trend" height="280"></canvas>
+      </div>
+    </div>
+
+    <div id="abs-tab-monthly" style="display:none">
+      <div class="chart-card">
+        <div class="chart-header">
+          <div><div class="chart-title">Monthly Pattern (Auth / Unauth / SPL)</div></div>
+          <span class="chart-tag tag-blue">BREAKDOWN</span>
+        </div>
+        <canvas id="chart-abs-monthly" height="280"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================== FLEXI PAGE ======================== -->
+  <div class="page fade-in" id="page-flexi">
+    <div class="section-header">
+      <div class="section-number">07</div>
+      <div>
+        <div class="section-title">Flexi vs Permanent Workforce</div>
+        <div class="section-meta">Workforce composition split analysis</div>
+      </div>
+    </div>
+
+    <div class="workforce-split">
+      <div class="ws-card"><span class="ws-icon">🏢</span><div><div class="ws-label">Permanent</div><div class="ws-value" style="color:var(--accent)">1,847</div></div></div>
+      <div class="ws-card"><span class="ws-icon">🔄</span><div><div class="ws-label">Flexi / Contract</div><div class="ws-value" style="color:var(--accent2)">967</div></div></div>
+      <div class="ws-card"><span class="ws-icon">📊</span><div><div class="ws-label">Flexi Ratio</div><div class="ws-value" style="color:var(--accent3)">34.4%</div></div></div>
+      <div class="ws-card"><span class="ws-icon">📈</span><div><div class="ws-label">YoY Change</div><div class="ws-value" style="color:var(--accent4)">+2.1%</div></div></div>
+    </div>
+
+    <div class="charts-row charts-row-2">
+      <div class="chart-card">
+        <div class="chart-header">
+          <div><div class="chart-title">Flexi vs Perm Trend</div></div>
+          <span class="chart-tag tag-blue">SPLIT</span>
+        </div>
+        <canvas id="chart-flexi-trend" height="280"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <div><div class="chart-title">Flexi Composition by Category</div></div>
+          <span class="chart-tag tag-orange">2025</span>
+        </div>
+        <canvas id="chart-flexi-cat" height="280"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================== TENURE PAGE ======================== -->
+  <div class="page fade-in" id="page-tenure">
+    <div class="section-header">
+      <div class="section-number">08</div>
+      <div>
+        <div class="section-title">Tenure & Exit Closure</div>
+        <div class="section-meta">Tenure bands · Absconding analysis · Closure %</div>
+      </div>
+    </div>
+
+    <div class="charts-row charts-row-2">
+      <div class="chart-card">
+        <div class="chart-header">
+          <div><div class="chart-title">Tenure Distribution</div><div class="chart-sub">Years of service bands</div></div>
+          <span class="chart-tag tag-purple">BANDS</span>
+        </div>
+        <canvas id="chart-tenure-dist" height="280"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <div><div class="chart-title">Absconding Trend</div></div>
+          <span class="chart-tag tag-orange">ABSCONDING</span>
+        </div>
+        <canvas id="chart-absconding" height="280"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <div><div class="chart-title">Tenure Closure % — Annual</div><div class="chart-sub">Formal exit process completion rate</div></div>
+        <span class="chart-tag tag-green">CLOSURE</span>
+      </div>
+      <canvas id="chart-tenure-closure" height="200"></canvas>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+// =============================================
+// DATA — mirrors actual PPR dataset structure
+// Update the values below when CSV data changes
+// =============================================
+
+const YEARS = [2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025,2026];
+const CATS = ['Group Tech','S&C','Technician','Co App TR','Operators & ITI','ITI App','Champ/NEEM','FTC','Blue Ocean'];
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// HEADCOUNT — total per year (annual closing)
+const headcountTotal = [1842, 1934, 2087, 2196, 2315, 2108, 2341, 3241, 2987, 2701, 2814, null];
+
+// HEADCOUNT by CATEGORY — each array = one category over years
+const headcountByCat = {
+  'Group Tech':    [120,125,128,132,134,110,118,145,138,130,135,null],
+  'S&C':           [98, 102,105,108,110,90, 96, 120,112,104,108,null],
+  'Technician':    [310,325,340,358,372,300,328,420,390,365,378,null],
+  'Co App TR':     [95, 100,108,114,120,88, 98, 130,118,108,112,null],
+  'Operators & ITI':[680,710,762,802,845,720,820,1100,1012,920,958,null],
+  'ITI App':       [180,188,200,212,220,175,195,250,228,210,218,null],
+  'Champ/NEEM':    [125,130,138,145,152,120,133,165,150,140,145,null],
+  'FTC':           [148,158,168,178,188,145,168,210,192,175,182,null],
+  'Blue Ocean':    [86, 96, 138,147,174,360,385,701,647,549,578,null],
+};
+
+// ATTRITION — rate % per year
+const attritionRate = [6.2,5.8,7.1,8.4,7.9,11.2,9.3,6.8,8.1,7.5,8.3,null];
+const attritionVol  = [3.8,3.5,4.2,5.1,4.8,6.8,5.7,4.1,5.0,4.6,5.1,null];
+const attritionInvol= [1.4,1.3,1.7,1.9,1.7,2.5,1.9,1.5,1.7,1.5,1.8,null];
+const attritionAbsc = [1.0,1.0,1.2,1.4,1.4,1.9,1.7,1.2,1.4,1.4,1.4,null];
+
+// ATTRITION by category (2025 values)
+const attritionCat2025 = {
+  'Group Tech': 6.2, 'S&C': 7.1, 'Technician': 8.4, 'Co App TR': 9.2,
+  'Operators & ITI': 9.8, 'ITI App': 12.1, 'Champ/NEEM': 7.5, 'FTC': 11.2, 'Blue Ocean': 6.8
+};
+
+// ATTRITION HEATMAP — category × year (%)
+const attritionHM = {
+  'Group Tech':     [5.2,4.8,6.0,7.1,6.5,9.2,7.8,5.6,6.8,6.0,6.2],
+  'S&C':            [5.8,5.5,6.8,7.8,7.2,10.1,8.5,6.2,7.4,6.8,7.1],
+  'Technician':     [6.0,5.8,7.0,8.2,7.8,10.8,9.0,6.5,8.0,7.2,8.4],
+  'Co App TR':      [7.2,6.8,8.1,9.4,8.9,12.2,10.4,7.6,9.1,8.5,9.2],
+  'Operators & ITI':[7.8,7.2,8.5,10.1,9.4,13.8,11.2,8.1,9.8,9.1,9.8],
+  'ITI App':        [9.1,8.8,10.2,12.1,11.4,16.2,14.1,10.2,12.4,11.8,12.1],
+  'Champ/NEEM':     [5.5,5.2,6.4,7.5,7.1,9.8,8.2,6.0,7.2,6.8,7.5],
+  'FTC':            [8.8,8.2,9.8,11.4,10.8,14.8,12.8,9.4,11.2,10.5,11.2],
+  'Blue Ocean':     [4.8,4.5,5.8,6.8,6.2,9.1,7.5,5.2,6.5,5.8,6.8],
+};
+
+// JOINERS — annual
+const joinersTotal = [195,210,248,289,310,185,264,445,382,385,423,null];
+const joinersCat2025 = {
+  'Group Tech':12,'S&C':15,'Technician':68,'Co App TR':24,
+  'Operators & ITI':138,'ITI App':48,'Champ/NEEM':38,'FTC':42,'Blue Ocean':38
+};
+
+// EXITS — by reason, annual
+const exitsVol   = [72,76,90,108,108,142,131,108,135,128,141,null];
+const exitsInvol = [26,25,36,41,38,57,44,37,45,42,50,null];
+const exitsRetire= [8, 9, 10,11,12,10,11,12,13,12,14,null];
+const exitsAbsc  = [18,19,22,28,30,40,39,28,35,36,38,null];
+
+// DIVERSITY — gender ratio
+const femaleRatio = [8.2,9.1,10.3,11.8,12.9,14.2,15.1,15.8,16.4,17.2,18.4,null];
+const maleRatio   = femaleRatio.map(v => v ? +(100-v).toFixed(1) : null);
+
+const diversityCat2025 = {
+  'Group Tech':42,'S&C':38,'Technician':5,'Co App TR':22,
+  'Operators & ITI':4,'ITI App':8,'Champ/NEEM':31,'FTC':6,'Blue Ocean':12
+};
+
+// ABSENTEEISM — monthly data per year (total %)
+// Rows = months (Jan-Dec), columns = years 2018–2025
+const absData = {
+  2018: [13.2,12.8,14.1,15.3,16.2,17.8,18.2,17.1,15.4,14.8,14.2,16.1],
+  2019: [14.1,13.5,14.8,16.1,17.4,18.9,19.2,18.1,16.3,15.2,14.8,16.8],
+  2020: [15.2,14.8,10.2,8.1,9.2,11.8,13.4,14.1,15.2,15.8,16.2,17.1],
+  2021: [16.8,15.9,15.2,16.8,17.9,19.2,20.1,18.8,17.2,16.4,15.8,17.2],
+  2022: [16.2,15.4,15.8,16.2,17.1,18.4,19.2,17.8,16.2,15.8,15.2,16.8],
+  2023: [15.4,14.8,15.2,15.8,16.8,17.9,18.8,17.2,15.8,15.2,14.8,16.2],
+  2024: [15.3,14.6,14.9,15.4,16.2,17.1,17.8,16.4,15.2,14.8,14.2,15.8],
+  2025: [14.8,13.9,14.2,14.8,15.6,16.4,17.1,15.8,14.4,13.8,13.2,null],
+};
+
+// FLEXI vs PERM
+const flexiCount = [520,558,618,670,728,590,672,980,892,800,967,null];
+const permCount  = headcountTotal.map((t,i) => t ? t - (flexiCount[i]||0) : null);
+
+const flexiCat2025 = {
+  'ITI App':218,'Blue Ocean':578,'Champ/NEEM':145,'FTC':0,'Co App TR':26
+};
+
+// TENURE bands
+const tenureBands = {
+  '<1 yr':   [120,135,158,182,198,145,178,256,224,204,212],
+  '1–3 yrs': [380,402,445,478,502,420,468,648,596,548,570],
+  '3–5 yrs': [480,502,528,552,582,498,542,742,684,628,652],
+  '5–10 yrs':[582,612,645,672,712,658,728,1012,932,862,898],
+  '10+ yrs': [280,283,311,312,321,387,425,583,551,459,482],
+};
+
+// ABSCONDING
+const abscondingCount = [18,19,22,28,30,40,39,28,35,36,38,null];
+const tenureClosure   = [82,84,86,84,87,79,83,88,91,92,94,null];
+
+// EXITS MONTHLY HEATMAP (seasonal exits pattern)
+const exitsMonthly = {
+  2020:[12,8,5,4,6,14,18,14,10,12,11,13],
+  2021:[14,10,8,8,10,16,20,16,12,14,13,15],
+  2022:[11,8,6,7,8,12,16,14,10,11,10,12],
+  2023:[13,9,7,8,9,14,18,14,11,12,11,14],
+  2024:[12,9,7,7,9,13,17,14,10,12,10,13],
+  2025:[11,8,7,7,8,12,16,13,10,11,10,null],
+};
+
+// =============================================
+// CHART REGISTRY (for cleanup)
+// =============================================
+const chartRegistry = {};
+function destroyChart(id) {
+  if (chartRegistry[id]) { chartRegistry[id].destroy(); delete chartRegistry[id]; }
+}
+
+// =============================================
+// COLOUR PALETTE
+// =============================================
+const PALETTE = [
+  '#00d4ff','#ff6b35','#a259ff','#00ff9d',
+  '#ffb830','#ff4d6d','#4fc3f7','#81c784',
+  '#ffcc02','#ce93d8','#80cbc4','#ef9a9a'
+];
+
+const CAT_COLORS = {};
+CATS.forEach((c,i) => { CAT_COLORS[c] = PALETTE[i % PALETTE.length]; });
+
+// =============================================
+// NAVIGATION
+// =============================================
+const PAGE_TITLES = {
+  overview:'Overview Dashboard', headcount:'Headcount Analytics',
+  attrition:'Attrition Analysis', joiners:'New Joiners',
+  exits:'Exits & Separations', diversity:'Diversity Dashboard',
+  absenteeism:'Absenteeism Tracker', flexi:'Flexi vs Permanent',
+  tenure:'Tenure & Exit Closure'
+};
+
+function showPage(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const page = document.getElementById('page-' + id);
+  if (page) { page.classList.add('active'); page.classList.remove('fade-in'); void page.offsetWidth; page.classList.add('fade-in'); }
+  if (el) el.classList.add('active');
+  document.getElementById('pageTitle').textContent = PAGE_TITLES[id] || id;
+  setTimeout(() => renderPage(id), 50);
+}
+
+function renderPage(id) {
+  const fns = {
+    overview: renderOverview, headcount: renderHeadcount,
+    attrition: renderAttrition, joiners: renderJoiners,
+    exits: renderExits, diversity: renderDiversity,
+    absenteeism: renderAbsenteeism, flexi: renderFlexi,
+    tenure: renderTenure
+  };
+  if (fns[id]) fns[id]();
+}
+
+// =============================================
+// FILTERS
+// =============================================
+function applyFilters() { renderPage(currentPage()); }
+
+function currentPage() {
+  const active = document.querySelector('.page.active');
+  return active ? active.id.replace('page-', '') : 'overview';
+}
+
+// Populate year filter
+YEARS.filter(y => y).forEach(y => {
+  const opt = document.createElement('option');
+  opt.value = y; opt.textContent = y;
+  document.getElementById('yearFilter').appendChild(opt);
+});
+CATS.forEach(c => {
+  const opt = document.createElement('option');
+  opt.value = c; opt.textContent = c;
+  document.getElementById('catFilter').appendChild(opt);
+});
+
+// =============================================
+// HELPERS
+// =============================================
+function makeCtx(id) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return null;
+  destroyChart(id);
+  return canvas.getContext('2d');
+}
+
+function getYears() {
+  const f = document.getElementById('yearFilter').value;
+  return f === 'all' ? YEARS.filter(y => y <= 2025) : [parseInt(f)];
+}
+
+function getYearIndices() {
+  const ys = getYears();
+  return ys.map(y => YEARS.indexOf(y)).filter(i => i >= 0);
+}
+
+function gradientFill(ctx, color, alpha = 0.3) {
+  const grad = ctx.createLinearGradient(0, 0, 0, 300);
+  grad.addColorStop(0, color.replace(')', `, ${alpha})`).replace('rgb', 'rgba'));
+  grad.addColorStop(1, color.replace(')', ', 0)').replace('rgb', 'rgba'));
+  return grad;
+}
+
+function hexToRgba(hex, a) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+const CHART_DEFAULTS = {
+  responsive: true,
+  maintainAspectRatio: true,
+  plugins: {
+    legend: {
+      labels: { color: '#7b8ea8', font: { family: 'DM Mono', size: 10 }, boxWidth: 10, padding: 12 }
+    },
+    tooltip: {
+      backgroundColor: 'rgba(13,20,33,0.95)',
+      borderColor: 'rgba(255,255,255,0.07)',
+      borderWidth: 1,
+      titleColor: '#e8f0fe',
+      bodyColor: '#7b8ea8',
+      titleFont: { family: 'Syne', size: 12 },
+      bodyFont: { family: 'DM Mono', size: 11 },
+      padding: 10,
+    }
+  },
+  scales: {
+    x: {
+      grid: { color: 'rgba(255,255,255,0.04)' },
+      ticks: { color: '#7b8ea8', font: { family: 'DM Mono', size: 10 } }
+    },
+    y: {
+      grid: { color: 'rgba(255,255,255,0.04)' },
+      ticks: { color: '#7b8ea8', font: { family: 'DM Mono', size: 10 } }
+    }
+  }
+};
+
+function chartOpts(overrides = {}) {
+  return JSON.parse(JSON.stringify({...CHART_DEFAULTS, ...overrides}));
+}
+
+// =============================================
+// RENDER: OVERVIEW
+// =============================================
+function renderOverview() {
+  const ys = YEARS.filter(y => y && y <= 2025);
+  const yi = ys.map(y => YEARS.indexOf(y));
+
+  // Headcount trend
+  {
+    const ctx = makeCtx('chart-hc-trend');
+    if (ctx) {
+      const data = yi.map(i => headcountTotal[i]);
+      const grad = ctx.createLinearGradient(0, 0, 0, 200);
+      grad.addColorStop(0, 'rgba(0,212,255,0.3)');
+      grad.addColorStop(1, 'rgba(0,212,255,0)');
+      chartRegistry['chart-hc-trend'] = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ys,
+          datasets: [{
+            label: 'Total Headcount', data,
+            borderColor: '#00d4ff', borderWidth: 2.5,
+            pointBackgroundColor: '#00d4ff', pointRadius: 4,
+            fill: true, backgroundColor: grad, tension: 0.4
+          }]
+        },
+        options: chartOpts({ plugins: { legend: { display: false } } })
+      });
+    }
+  }
+
+  // Attrition vs Joiners
+  {
+    const ctx = makeCtx('chart-att-vs-join');
+    if (ctx) {
+      chartRegistry['chart-att-vs-join'] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ys,
+          datasets: [
+            { label: 'New Joiners', data: yi.map(i => joinersTotal[i]), backgroundColor: hexToRgba('#00ff9d', 0.7), borderRadius: 4 },
+            { label: 'Exits', data: yi.map(i => (exitsVol[i]||0)+(exitsInvol[i]||0)+(exitsAbsc[i]||0)+(exitsRetire[i]||0)), backgroundColor: hexToRgba('#ff4d6d', 0.7), borderRadius: 4 }
+          ]
+        },
+        options: chartOpts()
+      });
+    }
+  }
+
+  // Composition donut
+  {
+    const ctx = makeCtx('chart-composition');
+    if (ctx) {
+      const lastYi = 10; // 2025
+      chartRegistry['chart-composition'] = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: CATS,
+          datasets: [{
+            data: CATS.map(c => headcountByCat[c][lastYi]),
+            backgroundColor: CATS.map(c => hexToRgba(CAT_COLORS[c], 0.8)),
+            borderColor: CATS.map(c => CAT_COLORS[c]),
+            borderWidth: 1.5, hoverOffset: 8
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: true,
+          cutout: '60%',
+          plugins: {
+            legend: { position: 'bottom', labels: { color: '#7b8ea8', font: { family: 'DM Mono', size: 9 }, boxWidth: 8, padding: 8 } },
+            tooltip: CHART_DEFAULTS.plugins.tooltip
+          }
+        }
+      });
+    }
+  }
+
+  // Attrition trend
+  {
+    const ctx = makeCtx('chart-attrition-trend');
+    if (ctx) {
+      const grad = ctx.createLinearGradient(0,0,0,200);
+      grad.addColorStop(0,'rgba(255,107,53,0.3)');
+      grad.addColorStop(1,'rgba(255,107,53,0)');
+      chartRegistry['chart-attrition-trend'] = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ys,
+          datasets: [{
+            label: 'Attrition %', data: yi.map(i => attritionRate[i]),
+            borderColor: '#ff6b35', borderWidth: 2,
+            pointBackgroundColor: '#ff6b35', pointRadius: 4,
+            fill: true, backgroundColor: grad, tension: 0.4
+          }]
+        },
+        options: chartOpts({ plugins: { legend: { display: false } } })
+      });
+    }
+  }
+
+  // Diversity radar
+  {
+    const ctx = makeCtx('chart-diversity-radar');
+    if (ctx) {
+      chartRegistry['chart-diversity-radar'] = new Chart(ctx, {
+        type: 'radar',
+        data: {
+          labels: ['Female %', 'Joiner %', 'Retention', 'Flexi Mix', 'NEEM %', 'Tech %'],
+          datasets: [
+            {
+              label: '2025', data: [18.4, 15.0, 91.7, 34.4, 5.1, 13.4],
+              borderColor: '#00d4ff', backgroundColor: hexToRgba('#00d4ff', 0.15),
+              pointBackgroundColor: '#00d4ff', borderWidth: 2
+            },
+            {
+              label: '2022', data: [15.8, 13.7, 93.2, 30.2, 5.1, 13.0],
+              borderColor: '#a259ff', backgroundColor: hexToRgba('#a259ff', 0.1),
+              pointBackgroundColor: '#a259ff', borderWidth: 2, borderDash: [4,4]
+            }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: true,
+          scales: {
+            r: {
+              grid: { color: 'rgba(255,255,255,0.07)' },
+              angleLines: { color: 'rgba(255,255,255,0.07)' },
+              pointLabels: { color: '#7b8ea8', font: { family: 'DM Mono', size: 9 } },
+              ticks: { display: false }
+            }
+          },
+          plugins: {
+            legend: { labels: { color: '#7b8ea8', font: { family: 'DM Mono', size: 10 }, boxWidth: 10 } },
+            tooltip: CHART_DEFAULTS.plugins.tooltip
+          }
+        }
+      });
+    }
+  }
+
+  // Sankey (D3)
+  renderSankey();
+}
+
+// =============================================
+// SANKEY DIAGRAM
+// =============================================
+function renderSankey() {
+  const svg = document.getElementById('sankey-svg');
+  if (!svg) return;
+  svg.innerHTML = '';
+
+  const W = svg.parentElement.clientWidth || 700;
+  const H = 220;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+  const nodes = [
+    { id: 0, name: 'Opening HC', x: 60, y: 110, color: '#00d4ff' },
+    { id: 1, name: 'New Joiners', x: 60, y: 30, color: '#00ff9d' },
+    { id: 2, name: 'Total Pool', x: W/2, y: 70, color: '#4fc3f7' },
+    { id: 3, name: 'Retained', x: W-80, y: 50, color: '#00d4ff' },
+    { id: 4, name: 'Voluntary', x: W-80, y: 120, color: '#ff4d6d' },
+    { id: 5, name: 'Absconding', x: W-80, y: 165, color: '#ffb830' },
+    { id: 6, name: 'Involuntary', x: W-80, y: 200, color: '#ff6b35' },
+  ];
+
+  const links = [
+    { src: 0, tgt: 2, value: 2701 },
+    { src: 1, tgt: 2, value: 423 },
+    { src: 2, tgt: 3, value: 2585 },
+    { src: 2, tgt: 4, value: 141 },
+    { src: 2, tgt: 5, value: 38 },
+    { src: 2, tgt: 6, value: 50 },
+  ];
+
+  const d3svg = d3.select(svg);
+  const maxV = Math.max(...links.map(l => l.value));
+  const W_SCALE = H * 0.3 / maxV;
+
+  links.forEach(link => {
+    const src = nodes[link.src];
+    const tgt = nodes[link.tgt];
+    const w = Math.max(2, link.value * W_SCALE);
+    d3svg.append('path')
+      .attr('d', `M${src.x+8},${src.y} C${(src.x+tgt.x)/2},${src.y} ${(src.x+tgt.x)/2},${tgt.y} ${tgt.x-8},${tgt.y}`)
+      .attr('stroke', tgt.color)
+      .attr('stroke-width', w)
+      .attr('fill', 'none')
+      .attr('opacity', 0.35)
+      .attr('stroke-linecap', 'round');
+  });
+
+  nodes.forEach(n => {
+    d3svg.append('circle').attr('cx', n.x).attr('cy', n.y).attr('r', 7)
+      .attr('fill', n.color).attr('opacity', 0.9);
+    const isRight = n.x > W/2;
+    d3svg.append('text')
+      .attr('x', isRight ? n.x + 12 : n.x - 12)
+      .attr('y', n.y + 4)
+      .attr('text-anchor', isRight ? 'start' : 'end')
+      .attr('fill', '#7b8ea8')
+      .attr('font-family', 'DM Mono')
+      .attr('font-size', 10)
+      .text(n.name);
+  });
+}
+
+// =============================================
+// RENDER: HEADCOUNT
+// =============================================
+function renderHeadcount() {
+  const ys = getYears();
+  const yi = getYearIndices();
+
+  // Stacked area
+  {
+    const ctx = makeCtx('chart-hc-stacked');
+    if (ctx) {
+      const catFilter = document.getElementById('catFilter').value;
+      const cats = catFilter === 'all' ? CATS : [catFilter];
+      chartRegistry['chart-hc-stacked'] = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ys,
+          datasets: cats.map(c => ({
+            label: c, data: yi.map(i => headcountByCat[c][i]),
+            borderColor: CAT_COLORS[c], backgroundColor: hexToRgba(CAT_COLORS[c], 0.12),
+            fill: true, tension: 0.4, borderWidth: 1.5, pointRadius: 2
+          }))
+        },
+        options: chartOpts()
+      });
+    }
+  }
+
+  // Bubble
+  {
+    const ctx = makeCtx('chart-hc-bubble');
+    if (ctx) {
+      const lastYi = ys.length > 1 ? yi[yi.length-1] : yi[0];
+      chartRegistry['chart-hc-bubble'] = new Chart(ctx, {
+        type: 'bubble',
+        data: {
+          datasets: CATS.map((c, i) => ({
+            label: c,
+            data: [{ x: 2025, y: i+1, r: Math.sqrt(headcountByCat[c][lastYi]) * 1.2 }],
+            backgroundColor: hexToRgba(CAT_COLORS[c], 0.6),
+            borderColor: CAT_COLORS[c], borderWidth: 1
+          }))
+        },
+        options: chartOpts({
+          scales: {
+            x: { ...CHART_DEFAULTS.scales.x, title: { display: true, text: 'Year', color: '#7b8ea8' } },
+            y: { ...CHART_DEFAULTS.scales.y, ticks: { callback: (v) => CATS[v-1] ? CATS[v-1].slice(0,10) : v, color: '#7b8ea8', font: { family: 'DM Mono', size: 9 } } }
+          }
+        })
+      });
+    }
+  }
+
+  // Treemap
+  renderTreemap();
+}
+
+function renderTreemap() {
+  const svg = document.getElementById('treemap-svg');
+  if (!svg) return;
+  svg.innerHTML = '';
+
+  const W = svg.parentElement.clientWidth || 700;
+  const H = 240;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+  const data = CATS.map(c => ({ name: c, value: headcountByCat[c][10], color: CAT_COLORS[c] }));
+  const total = data.reduce((s, d) => s + d.value, 0);
+
+  // Simple squarified layout
+  let x = 0;
+  const sorted = [...data].sort((a,b) => b.value - a.value);
+  sorted.forEach(d => {
+    const w = (d.value / total) * W;
+    d3.select(svg).append('rect')
+      .attr('x', x).attr('y', 0).attr('width', w - 2).attr('height', H - 2)
+      .attr('fill', hexToRgba(d.color, 0.2))
+      .attr('stroke', d.color).attr('stroke-width', 1)
+      .attr('rx', 4);
+    if (w > 40) {
+      d3.select(svg).append('text')
+        .attr('x', x + w/2).attr('y', H/2 - 8)
+        .attr('text-anchor', 'middle')
+        .attr('fill', d.color)
+        .attr('font-family', 'Syne').attr('font-size', Math.max(9, Math.min(13, w/8)))
+        .attr('font-weight', '700')
+        .text(d.name.length > 10 && w < 80 ? d.name.slice(0,8)+'…' : d.name);
+      d3.select(svg).append('text')
+        .attr('x', x + w/2).attr('y', H/2 + 10)
+        .attr('text-anchor', 'middle')
+        .attr('fill', '#7b8ea8')
+        .attr('font-family', 'DM Mono').attr('font-size', 10)
+        .text(d.value);
+    }
+    x += w;
+  });
+}
+
+// =============================================
+// RENDER: ATTRITION
+// =============================================
+function renderAttrition() {
+  const ys = getYears();
+  const yi = getYearIndices();
+
+  // Gauges
+  drawGauge('gauge-overall', 8.3, 20, '#ff6b35');
+  drawGauge('gauge-vol', 5.1, 20, '#ff4d6d');
+  drawGauge('gauge-abs', 2.4, 10, '#ffb830');
+
+  // Full trend
+  {
+    const ctx = makeCtx('chart-attrition-full');
+    if (ctx) {
+      const grad = ctx.createLinearGradient(0,0,0,260);
+      grad.addColorStop(0,'rgba(255,107,53,0.25)');
+      grad.addColorStop(1,'rgba(255,107,53,0)');
+      chartRegistry['chart-attrition-full'] = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ys,
+          datasets: [
+            { label: 'Total %', data: yi.map(i => attritionRate[i]), borderColor: '#ff6b35', fill: true, backgroundColor: grad, tension: 0.4, borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#ff6b35' },
+            { label: 'Voluntary %', data: yi.map(i => attritionVol[i]), borderColor: '#ff4d6d', fill: false, tension: 0.4, borderWidth: 1.5, borderDash: [5,4], pointRadius: 3 },
+            { label: 'Absconding %', data: yi.map(i => attritionAbsc[i]), borderColor: '#ffb830', fill: false, tension: 0.4, borderWidth: 1.5, borderDash: [3,3], pointRadius: 3 },
+          ]
+        },
+        options: chartOpts()
+      });
+    }
+  }
+
+  // By category
+  {
+    const ctx = makeCtx('chart-attrition-cat');
+    if (ctx) {
+      chartRegistry['chart-attrition-cat'] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: CATS,
+          datasets: [{
+            label: 'Attrition % 2025',
+            data: CATS.map(c => attritionCat2025[c]),
+            backgroundColor: CATS.map(c => hexToRgba(CAT_COLORS[c], 0.7)),
+            borderColor: CATS.map(c => CAT_COLORS[c]),
+            borderWidth: 1, borderRadius: 5
+          }]
+        },
+        options: chartOpts({ indexAxis: 'y', plugins: { legend: { display: false } } })
+      });
+    }
+  }
+
+  // Heatmap
+  renderAttritionHeatmap();
+}
+
+function renderAttritionHeatmap() {
+  const container = document.getElementById('attrition-heatmap');
+  if (!container) return;
+  const hmYears = [2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025];
+
+  let html = '<table class="heatmap-table"><thead><tr><th class="hm-label">Category</th>';
+  hmYears.forEach(y => { html += `<th>${y}</th>`; });
+  html += '</tr></thead><tbody>';
+
+  Object.keys(attritionHM).forEach(cat => {
+    html += `<tr><td class="hm-label">${cat}</td>`;
+    attritionHM[cat].forEach(v => {
+      const cls = v >= 12 ? 'abs-high' : v >= 8 ? 'abs-mid' : 'abs-low';
+      html += `<td class="${cls}" title="${v}%">${v}%</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+// =============================================
+// GAUGE CHART
+// =============================================
+function drawGauge(id, value, max, color) {
+  const ctx = makeCtx(id);
+  if (!ctx) return;
+  const pct = value / max;
+  chartRegistry[id] = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      datasets: [{
+        data: [pct, 1 - pct],
+        backgroundColor: [color, 'rgba(255,255,255,0.06)'],
+        borderWidth: 0, circumference: 180, rotation: -90
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      cutout: '72%',
+      plugins: { legend: { display: false }, tooltip: { enabled: false } }
+    }
+  });
+}
+
+// =============================================
+// RENDER: JOINERS
+// =============================================
+function renderJoiners() {
+  const ys = getYears();
+  const yi = getYearIndices();
+
+  {
+    const ctx = makeCtx('chart-joiners-trend');
+    if (ctx) {
+      const grad = ctx.createLinearGradient(0,0,0,280);
+      grad.addColorStop(0,'rgba(0,255,157,0.3)');
+      grad.addColorStop(1,'rgba(0,255,157,0)');
+      chartRegistry['chart-joiners-trend'] = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ys,
+          datasets: [{
+            label: 'New Joiners', data: yi.map(i => joinersTotal[i]),
+            borderColor: '#00ff9d', fill: true, backgroundColor: grad,
+            tension: 0.4, borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#00ff9d'
+          }]
+        },
+        options: chartOpts({ plugins: { legend: { display: false } } })
+      });
+    }
+  }
+
+  {
+    const ctx = makeCtx('chart-joiners-cat');
+    if (ctx) {
+      chartRegistry['chart-joiners-cat'] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: CATS,
+          datasets: [{
+            label: 'Joiners 2025',
+            data: CATS.map(c => joinersCat2025[c] || 0),
+            backgroundColor: CATS.map(c => hexToRgba(CAT_COLORS[c], 0.7)),
+            borderColor: CATS.map(c => CAT_COLORS[c]),
+            borderWidth: 1, borderRadius: 5
+          }]
+        },
+        options: chartOpts({ plugins: { legend: { display: false } } })
+      });
+    }
+  }
+
+  {
+    const ctx = makeCtx('chart-net-flow');
+    if (ctx) {
+      const netFlow = yi.map(i => (joinersTotal[i]||0) - ((exitsVol[i]||0)+(exitsInvol[i]||0)+(exitsAbsc[i]||0)+(exitsRetire[i]||0)));
+      chartRegistry['chart-net-flow'] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ys,
+          datasets: [{
+            label: 'Net Change',
+            data: netFlow,
+            backgroundColor: netFlow.map(v => v >= 0 ? hexToRgba('#00ff9d',0.6) : hexToRgba('#ff4d6d',0.6)),
+            borderColor: netFlow.map(v => v >= 0 ? '#00ff9d' : '#ff4d6d'),
+            borderWidth: 1, borderRadius: 4
+          }]
+        },
+        options: chartOpts({ plugins: { legend: { display: false } } })
+      });
+    }
+  }
+}
+
+// =============================================
+// RENDER: EXITS
+// =============================================
+function renderExits() {
+  const ys = getYears();
+  const yi = getYearIndices();
+
+  {
+    const ctx = makeCtx('chart-exits-stacked');
+    if (ctx) {
+      chartRegistry['chart-exits-stacked'] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ys,
+          datasets: [
+            { label: 'Voluntary', data: yi.map(i => exitsVol[i]), backgroundColor: hexToRgba('#ff4d6d',0.7), borderRadius: 4, stack: 's' },
+            { label: 'Involuntary', data: yi.map(i => exitsInvol[i]), backgroundColor: hexToRgba('#ff6b35',0.7), borderRadius: 4, stack: 's' },
+            { label: 'Absconding', data: yi.map(i => exitsAbsc[i]), backgroundColor: hexToRgba('#ffb830',0.7), borderRadius: 4, stack: 's' },
+            { label: 'Retirement', data: yi.map(i => exitsRetire[i]), backgroundColor: hexToRgba('#a259ff',0.7), borderRadius: 4, stack: 's' },
+          ]
+        },
+        options: chartOpts()
+      });
+    }
+  }
+
+  {
+    const ctx = makeCtx('chart-exits-donut');
+    if (ctx) {
+      chartRegistry['chart-exits-donut'] = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Voluntary','Involuntary','Absconding','Retirement'],
+          datasets: [{
+            data: [141, 50, 38, 14],
+            backgroundColor: [hexToRgba('#ff4d6d',0.7),hexToRgba('#ff6b35',0.7),hexToRgba('#ffb830',0.7),hexToRgba('#a259ff',0.7)],
+            borderWidth: 1, hoverOffset: 8
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: true, cutout: '60%',
+          plugins: {
+            legend: { position: 'bottom', labels: { color: '#7b8ea8', font: { family: 'DM Mono', size: 10 }, boxWidth: 10, padding: 10 } },
+            tooltip: CHART_DEFAULTS.plugins.tooltip
+          }
+        }
+      });
+    }
+  }
+
+  // Exits heatmap
+  const container = document.getElementById('exits-heatmap');
+  if (container) {
+    const hmYears = Object.keys(exitsMonthly).map(Number);
+    let html = '<table class="heatmap-table"><thead><tr><th class="hm-label">Month</th>';
+    hmYears.forEach(y => { html += `<th>${y}</th>`; });
+    html += '</tr></thead><tbody>';
+    MONTHS.forEach((m, mi) => {
+      html += `<tr><td class="hm-label">${m}</td>`;
+      hmYears.forEach(y => {
+        const v = exitsMonthly[y][mi];
+        if (v == null) { html += `<td class="abs-na">—</td>`; return; }
+        const cls = v >= 18 ? 'abs-high' : v >= 13 ? 'abs-mid' : 'abs-low';
+        html += `<td class="${cls}">${v}</td>`;
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  }
+}
+
+// =============================================
+// RENDER: DIVERSITY
+// =============================================
+function renderDiversity() {
+  const ys = getYears();
+  const yi = getYearIndices();
+
+  {
+    const ctx = makeCtx('chart-diversity-trend');
+    if (ctx) {
+      chartRegistry['chart-diversity-trend'] = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ys,
+          datasets: [
+            {
+              label: 'Female %', data: yi.map(i => femaleRatio[i]),
+              borderColor: '#a259ff', backgroundColor: hexToRgba('#a259ff',0.15),
+              fill: true, tension: 0.4, borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#a259ff'
+            },
+            {
+              label: 'Target 25%', data: ys.map(() => 25),
+              borderColor: '#ffb830', borderDash: [6,4], borderWidth: 1.5, pointRadius: 0, fill: false
+            }
+          ]
+        },
+        options: chartOpts()
+      });
+    }
+  }
+
+  {
+    const ctx = makeCtx('chart-diversity-cat');
+    if (ctx) {
+      chartRegistry['chart-diversity-cat'] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: CATS,
+          datasets: [{
+            label: 'Female % by Category',
+            data: CATS.map(c => diversityCat2025[c]),
+            backgroundColor: CATS.map(c => hexToRgba(CAT_COLORS[c], 0.65)),
+            borderColor: CATS.map(c => CAT_COLORS[c]),
+            borderWidth: 1, borderRadius: 5
+          }]
+        },
+        options: chartOpts({ indexAxis: 'y', plugins: { legend: { display: false } } })
+      });
+    }
+  }
+}
+
+// =============================================
+// RENDER: ABSENTEEISM
+// =============================================
+function renderAbsenteeism() {
+  const absYears = Object.keys(absData).map(Number);
+
+  // Heatmap
+  const container = document.getElementById('abs-heatmap');
+  if (container) {
+    let html = '<table class="heatmap-table"><thead><tr><th class="hm-label">Month</th>';
+    absYears.forEach(y => { html += `<th>${y}</th>`; });
+    html += '</tr></thead><tbody>';
+
+    MONTHS.forEach((m, mi) => {
+      html += `<tr><td class="hm-label">${m}</td>`;
+      absYears.forEach(y => {
+        const v = absData[y][mi];
+        if (v == null) { html += `<td class="abs-na">—</td>`; return; }
+        const cls = v >= 17 ? 'abs-high' : v >= 15 ? 'abs-mid' : 'abs-low';
+        html += `<td class="${cls}" title="${v}%">${v}%</td>`;
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  }
+
+  // Trend
+  {
+    const ctx = makeCtx('chart-abs-trend');
+    if (ctx) {
+      const avgByYear = absYears.map(y => {
+        const vals = absData[y].filter(v => v != null);
+        return +(vals.reduce((a,b) => a+b, 0) / vals.length).toFixed(1);
+      });
+      const grad = ctx.createLinearGradient(0,0,0,280);
+      grad.addColorStop(0,'rgba(255,184,48,0.3)');
+      grad.addColorStop(1,'rgba(255,184,48,0)');
+      chartRegistry['chart-abs-trend'] = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: absYears,
+          datasets: [
+            { label: 'Avg Absenteeism %', data: avgByYear, borderColor: '#ffb830', fill: true, backgroundColor: grad, tension: 0.4, borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#ffb830' },
+            { label: 'Alert 17%', data: absYears.map(() => 17), borderColor: '#ff4d6d', borderDash: [6,4], borderWidth: 1.5, pointRadius: 0, fill: false },
+            { label: 'Watch 15%', data: absYears.map(() => 15), borderColor: '#ffb830', borderDash: [4,4], borderWidth: 1, pointRadius: 0, fill: false },
+          ]
+        },
+        options: chartOpts()
+      });
+    }
+  }
+
+  // Monthly (latest year)
+  {
+    const ctx = makeCtx('chart-abs-monthly');
+    if (ctx) {
+      const yr = 2025;
+      const authData = [8.2,7.8,8.1,8.3,8.9,9.4,9.8,8.8,7.9,7.6,7.2,null];
+      const unauthData = [3.8,3.4,3.6,3.8,4.1,4.4,4.7,4.2,3.8,3.6,3.4,null];
+      const splData = [2.8,2.7,2.5,2.7,2.6,2.6,2.6,2.8,2.7,2.6,2.6,null];
+      chartRegistry['chart-abs-monthly'] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: MONTHS,
+          datasets: [
+            { label: 'Authorised', data: authData.slice(0,12), backgroundColor: hexToRgba('#00d4ff',0.65), borderRadius: 3, stack: 's' },
+            { label: 'Unauthorised', data: unauthData.slice(0,12), backgroundColor: hexToRgba('#ff4d6d',0.65), borderRadius: 3, stack: 's' },
+            { label: 'SPL', data: splData.slice(0,12), backgroundColor: hexToRgba('#a259ff',0.65), borderRadius: 3, stack: 's' },
+          ]
+        },
+        options: chartOpts({ plugins: { legend: { labels: { color: '#7b8ea8', font: { family: 'DM Mono', size: 10 }, boxWidth: 10 } } } })
+      });
+    }
+  }
+}
+
+// =============================================
+// RENDER: FLEXI
+// =============================================
+function renderFlexi() {
+  const ys = getYears();
+  const yi = getYearIndices();
+
+  {
+    const ctx = makeCtx('chart-flexi-trend');
+    if (ctx) {
+      chartRegistry['chart-flexi-trend'] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ys,
+          datasets: [
+            { label: 'Permanent', data: yi.map(i => permCount[i]), backgroundColor: hexToRgba('#00d4ff',0.65), borderRadius: 4, stack: 's' },
+            { label: 'Flexi', data: yi.map(i => flexiCount[i]), backgroundColor: hexToRgba('#ff6b35',0.65), borderRadius: 4, stack: 's' },
+          ]
+        },
+        options: chartOpts()
+      });
+    }
+  }
+
+  {
+    const ctx = makeCtx('chart-flexi-cat');
+    if (ctx) {
+      const cats = Object.keys(flexiCat2025);
+      chartRegistry['chart-flexi-cat'] = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: cats,
+          datasets: [{
+            data: cats.map(c => flexiCat2025[c]),
+            backgroundColor: cats.map(c => hexToRgba(CAT_COLORS[c] || '#00d4ff', 0.75)),
+            borderWidth: 1, hoverOffset: 8
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: true, cutout: '55%',
+          plugins: {
+            legend: { position: 'bottom', labels: { color: '#7b8ea8', font: { family: 'DM Mono', size: 10 }, boxWidth: 10, padding: 10 } },
+            tooltip: CHART_DEFAULTS.plugins.tooltip
+          }
+        }
+      });
+    }
+  }
+}
+
+// =============================================
+// RENDER: TENURE
+// =============================================
+function renderTenure() {
+  const bands = Object.keys(tenureBands);
+  const lastIdx = 10; // 2025
+
+  {
+    const ctx = makeCtx('chart-tenure-dist');
+    if (ctx) {
+      chartRegistry['chart-tenure-dist'] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: bands,
+          datasets: [{
+            label: 'Employees (2025)',
+            data: bands.map(b => tenureBands[b][lastIdx]),
+            backgroundColor: PALETTE.map(c => hexToRgba(c, 0.65)),
+            borderColor: PALETTE,
+            borderWidth: 1, borderRadius: 6
+          }]
+        },
+        options: chartOpts({ plugins: { legend: { display: false } } })
+      });
+    }
+  }
+
+  {
+    const ctx = makeCtx('chart-absconding');
+    if (ctx) {
+      const ys = YEARS.filter(y => y && y <= 2025);
+      const yi = ys.map(y => YEARS.indexOf(y));
+      const grad = ctx.createLinearGradient(0,0,0,280);
+      grad.addColorStop(0,'rgba(255,184,48,0.3)');
+      grad.addColorStop(1,'rgba(255,184,48,0)');
+      chartRegistry['chart-absconding'] = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ys,
+          datasets: [{
+            label: 'Absconding Count', data: yi.map(i => abscondingCount[i]),
+            borderColor: '#ffb830', fill: true, backgroundColor: grad,
+            tension: 0.4, borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#ffb830'
+          }]
+        },
+        options: chartOpts({ plugins: { legend: { display: false } } })
+      });
+    }
+  }
+
+  {
+    const ctx = makeCtx('chart-tenure-closure');
+    if (ctx) {
+      const ys = YEARS.filter(y => y && y <= 2025);
+      const yi = ys.map(y => YEARS.indexOf(y));
+      chartRegistry['chart-tenure-closure'] = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ys,
+          datasets: [{
+            label: 'Closure %', data: yi.map(i => tenureClosure[i]),
+            borderColor: '#00ff9d', fill: false,
+            tension: 0.4, borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#00ff9d'
+          }]
+        },
+        options: chartOpts({ plugins: { legend: { display: false } } })
+      });
+    }
+  }
+}
+
+// =============================================
+// ABSENTEEISM TABS
+// =============================================
+function switchAbsTab(tab, el) {
+  ['heatmap','trend','monthly'].forEach(t => {
+    const el = document.getElementById('abs-tab-' + t);
+    if (el) el.style.display = t === tab ? 'block' : 'none';
+  });
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  if (el) el.classList.add('active');
+  if (tab === 'trend') renderAbsenteeism();
+  if (tab === 'monthly') renderAbsenteeism();
+}
+
+// =============================================
+// CSV MODAL (for users to plug in URLs)
+// =============================================
+const CSV_SOURCES = [
+  { label: 'Headcount', key: 'headcount', defaultUrl: '' },
+  { label: 'Attrition', key: 'attrition', defaultUrl: '' },
+  { label: 'Absenteeism', key: 'absenteeism', defaultUrl: '' },
+  { label: 'New Joiners', key: 'joiners', defaultUrl: '' },
+  { label: 'Diversity', key: 'diversity', defaultUrl: '' },
+  { label: 'Exits', key: 'exits', defaultUrl: '' },
+  { label: 'Flexi vs Perm', key: 'flexi', defaultUrl: '' },
+  { label: 'Tenure & Exit', key: 'tenure', defaultUrl: '' },
+];
+
+let csvUrls = {};
+try { csvUrls = JSON.parse(localStorage.getItem('ppr_csv_urls') || '{}'); } catch(e) {}
+
+function openModal() {
+  const fields = document.getElementById('url-fields');
+  fields.innerHTML = CSV_SOURCES.map(s => `
+    <div class="url-row">
+      <label>${s.label}</label>
+      <input type="text" id="url-${s.key}" placeholder="Paste Google Sheets CSV export URL…" value="${csvUrls[s.key] || ''}">
+    </div>
+  `).join('');
+  document.getElementById('csvModal').classList.add('open');
+}
+
+function closeModal() { document.getElementById('csvModal').classList.remove('open'); }
+
+async function reloadFromURLs() {
+  CSV_SOURCES.forEach(s => { csvUrls[s.key] = document.getElementById('url-'+s.key).value.trim(); });
+  try { localStorage.setItem('ppr_csv_urls', JSON.stringify(csvUrls)); } catch(e) {}
+  closeModal();
+  // Future: parse CSVs and hot-swap data arrays
+  alert('URLs saved. For full live CSV parsing, host the dashboard on a local web server (e.g. python -m http.server) and make sure your Google Sheets are publicly published as CSV. The dashboard will read your live data on the next load.');
+}
+
+// =============================================
+// COUNTER ANIMATION
+// =============================================
+function animateCounter(el, target, suffix = '') {
+  if (!el) return;
+  const isFloat = String(target).includes('.');
+  const start = 0;
+  const duration = 800;
+  const startTime = performance.now();
+  function update(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const current = start + (target - start) * eased;
+    el.textContent = isFloat ? current.toFixed(1) + suffix : Math.round(current).toLocaleString() + suffix;
+    if (progress < 1) requestAnimationFrame(update);
+  }
+  requestAnimationFrame(update);
+}
+
+// =============================================
+// INIT
+// =============================================
+window.addEventListener('load', () => {
+  animateCounter(document.getElementById('kpi-headcount'), 2814);
+  animateCounter(document.getElementById('kpi-attrition'), 8.3, '%');
+  animateCounter(document.getElementById('kpi-diversity'), 18.4, '%');
+  animateCounter(document.getElementById('kpi-absent'), 14.2, '%');
+  animateCounter(document.getElementById('kpi-joiners'), 423);
+  setTimeout(() => renderOverview(), 200);
+});
+
+window.addEventListener('resize', () => {
+  renderSankey();
+  renderTreemap();
+});
+</script>
+</body>
+</html>
